@@ -13,13 +13,17 @@ conversations = {}
 def web_search(query):
     response = requests.post(
         "https://api.tavily.com/search",
-        json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 3}
+        json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 2}
     )
     results = response.json().get("results", [])
-    return "\n".join([r["content"] for r in results])
+    return "\n".join([r["content"][:300] for r in results])
+
+def needs_search(message):
+    keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather"]
+    return any(word in message.lower() for word in keywords)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I can search the web too! 🌐")
+    await update.message.reply_text("Hello! How can I help you?")
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
@@ -28,17 +32,18 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in conversations:
         conversations[user_id] = []
 
-    search_results = web_search(user_message)
-    
-    conversations[user_id].append({
-        "role": "user",
-        "content": f"{user_message}\n\nWeb search results:\n{search_results}"
-    })
+    if needs_search(user_message):
+        search_results = web_search(user_message)
+        content = f"{user_message}\n\nWeb results:\n{search_results}"
+    else:
+        content = user_message
+
+    conversations[user_id].append({"role": "user", "content": content})
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=conversations[user_id],
-        max_tokens=1000
+        max_tokens=500
     )
 
     reply = response.choices[0].message.content
