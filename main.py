@@ -2,8 +2,8 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from groq import Groq
 
-BOT_TOKEN = "YOUR_TELEGRAM_TOKEN"
-client = Groq(api_key="YOUR_GROQ_API_KEY")
+BOT_TOKEN = "8889692844:AAEsCmmzbr69B4CKNHWxD3uFZSEuKnDL0Xw"
+client = Groq(api_key="F4osnRANWRNEmbDQKC7aWGdyb3FYUzwdNpShjNf9YTJUOiavWghm")
 conversations = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
