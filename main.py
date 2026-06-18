@@ -4,7 +4,7 @@ from groq import Groq
 import requests
 
 BOT_TOKEN = "8818776406:AAFPC8Hxc6DlzSq7gcd9s3eAzUcqU8w7184"
-GROQ_API_KEY = "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")
+GROQ_API_KEY = "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"
 TAVILY_API_KEY = "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"
 
 client = Groq(api_key=GROQ_API_KEY)
