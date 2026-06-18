@@ -19,7 +19,13 @@ MODELS = [
 def web_search(query):
     response = requests.post(
         "https://api.tavily.com/search",
-        json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 2}
+        json={
+    "api_key": TAVILY_API_KEY, 
+    "query": query, 
+    "max_results": 3,
+    "search_depth": "advanced",
+    "topic": "news"
+        }
     )
     results = response.json().get("results", [])
     return "\n".join([r["content"][:300] for r in results])
