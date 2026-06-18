@@ -3,7 +3,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from groq import Groq
 
 BOT_TOKEN = "8889692844:AAEsCmmzbr69B4CKNHWxD3uFZSEuKnDL0Xw"
-client = Groq(api_key="F4osnRANWRNEmbDQKC7aWGdyb3FYUzwdNpShjNf9YTJUOiavWghm")
+client = Groq(api_key="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") 
 conversations = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
