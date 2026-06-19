@@ -10,6 +10,7 @@ TAVILY_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
 current_model = "llama-3.3-70b-versatile"
+
 MODELS = [
     "llama-3.3-70b-versatile",
     "gemma2-9b-it",
@@ -17,9 +18,11 @@ MODELS = [
 ]
 
 def web_search(query):
-    # Make query more specific for current dataif any(word in query.lower() for word in ["kwacha", "zmw", "exchange rate"]):
     if any(word in query.lower() for word in ["exchange", "kwacha", "rate", "price", "stock", "forex", "zmw"]):
-    query = "USD ZMW exchange rate today site:xe.com"
+        query = "USD ZMW exchange rate today site:xe.com"
+    else:
+        query = query + " 2026 current today"
+    
     response = requests.post(
         "https://api.tavily.com/search",
         json={
@@ -35,6 +38,59 @@ def web_search(query):
 
 def needs_search(message):
     keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather", "exchange", "kwacha", "rate", "price", "zmw", "forex", "dollar"]
+    return any(word in message.lower() for word in keywords)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hello! How can I help you?")
+
+async def model_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"🤖 Currently using: {current_model}")
+
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global current_model
+    user_id = update.message.chat_id
+    user_message = update.message.text
+
+    if user_id not in conversations:
+        conversations[user_id] = []
+
+    if needs_search(user_message):
+        search_results = web_search(user_message)
+        content = f"{user_message}\n\nWeb results:\n{search_results}"
+    else:
+        content = user_message
+
+    conversations[user_id].append({"role": "user", "content": content})
+
+    reply = None
+    used_model = None
+    for model in MODELS:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=conversations[user_id],
+                max_tokens=500
+            )
+            reply = response.choices[0].message.content
+            used_model = model
+            current_model = used_model
+            break
+        except Exception:
+            continue
+
+    if not reply:
+        reply = "I'm currently overloaded, please try again in a few minutes! 😔"
+    elif used_model != MODELS[0]:
+        reply = f"⚠️ Switched to {used_model}\n\n" + reply
+
+    conversations[user_id].append({"role": "assistant", "content": reply})
+    await update.message.reply_text(reply)
+
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("model", model_info))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+app.run_polling()    keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather", "exchange", "kwacha", "rate", "price", "zmw", "forex", "dollar"]
     return any(word in message.lower() for word in keywords)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hello! How can I help you?")
