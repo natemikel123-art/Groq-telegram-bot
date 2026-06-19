@@ -9,7 +9,6 @@ TAVILY_API_KEY = "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"
 
 client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
-MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b"]
 
 def web_search(query):
     response = requests.post(
@@ -41,22 +40,13 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conversations[user_id].append({"role": "user", "content": content})
 
-    reply = None
-    for model in MODELS:
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=conversations[user_id],
-                max_tokens=500
-            )
-            reply = response.choices[0].message.content
-            break
-        except Exception:
-            continue
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=conversations[user_id],
+        max_tokens=500
+    )
 
-    if not reply:
-        reply = "I'm overloaded! 😔"
-
+    reply = response.choices[0].message.content
     conversations[user_id].append({"role": "assistant", "content": reply})
     await update.message.reply_text(reply)
 
