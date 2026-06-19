@@ -42,7 +42,10 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=conversations[user_id],
+        messages=[
+            {"role": "system", "content": "You are ASTRO, a helpful AI assistant from Zambia. You're friendly, use emojis, and respond in a casual way. You love talking about Zambia, tech, and gaming."},
+            *conversations[user_id]
+        ],
         max_tokens=500
     )
 
