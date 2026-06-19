@@ -5,19 +5,21 @@ import requests
 
 BOT_TOKEN = "8818776406:AAGcgdVE1aL6My5pLNfNFf7bQnjeg6WmdWg"
 GROQ_API_KEY = "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"
-TAVILY_API_KEY = "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"
+SERPAPI_KEY = "1016ce29db72568f1e28438ec78486dee178eb6b80cc56ac9cd16e1d51fd6b25"
 
 client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
 
 def web_search(query):
-    query = query + " today 2026-06-19"
-    response = requests.post(
-        "https://api.tavily.com/search",
-        json={"api_key": TAVILY_API_KEY, "query": query}
-    )
-    results = response.json().get("results", [])
-    return "\n".join([r["content"][:300] for r in results])
+    url = "https://serpapi.com/search"
+    params = {
+        "q": query,
+        "api_key": "your_serpapi_key",
+        "engine": "google"
+    }
+    response = requests.get(url, params=params)
+    results = response.json().get("organic_results", [])
+    return "\n".join([f"{r['title']}: {r['snippet']}" for r in results[:3]])
 
 def needs_search(message):
     keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather"]
