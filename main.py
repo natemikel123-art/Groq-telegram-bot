@@ -19,7 +19,9 @@ def web_search(query):
     }
     response = requests.get(url, params=params)
     results = response.json().get("organic_results", [])
-    return "\n".join([f"{r['title']}: {r['snippet']}" for r in results[:3]])
+    if results:
+        return "\n".join([f"• {r['title']}\n{r['snippet']}" for r in results[:2]])
+    return "No results found"
 
 def needs_search(message):
     keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather"]
@@ -31,7 +33,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
     user_message = update.message.text
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.chat_id
+    user_message = update.message.text
 
+    # Ignore messages with links
+    if user_message and ("http" in user_message or "t.me" in user_message):
+        await update.message.reply_text("I don't process links, just ask me questions! 😊")
+        return
+
+    if user_id not in conversations:
+        conversations[user_id] = []
+    # ... rest of code
     if user_id not in conversations:
         conversations[user_id] = []
 
