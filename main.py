@@ -1,150 +1,200 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-from groq import Groq
 import requests
+import json
+import os
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-BOT_TOKEN = "8818776406:AAGcgdVE1aL6My5pLNfNFf7bQnjeg6WmdWg"
-GROQ_API_KEY = "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"
+# ================== KEYS ==================
+BOT_TOKEN = "8818776406:AAFPC8Hxc6DlzSq7gcd9s3eAzUcqU8w7184"
 TAVILY_API_KEY = "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"
+GROQ_API_KEY = "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"
 
-client = Groq(api_key=GROQ_API_KEY)
-conversations = {}
-current_model = "llama-3.3-70b-versatile"
+# ================== MEMORY ==================
+MEMORY_FILE = "memory.json"
 
-MODELS = ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"]
+def load_memory():
+    if not os.path.exists(MEMORY_FILE):
+        return {}
+    with open(MEMORY_FILE, "r") as f:
+        return json.load(f)
 
+def save_memory(data):
+    with open(MEMORY_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+memory = load_memory()
+
+def get_user(user_id):
+    if str(user_id) not in memory:
+        memory[str(user_id)] = {
+            "messages": [],
+            "facts": {}
+        }
+    return memory[str(user_id)]
+
+def update_memory(user_id, user_text, bot_reply):
+    user = get_user(user_id)
+
+    user["messages"].append({
+        "user": user_text,
+        "bot": bot_reply
+    })
+
+    user["messages"] = user["messages"][-10:]
+    save_memory(memory)
+
+# ================== FACT EXTRACTION ==================
+def extract_facts(user_id, text):
+    user = get_user(user_id)
+    t = text.lower()
+
+    if "my name is" in t:
+        user["facts"]["name"] = text.split("my name is")[-1].strip()
+
+    if "i like" in t:
+        user["facts"]["likes"] = text.split("i like")[-1].strip()
+
+    if "i live in" in t:
+        user["facts"]["location"] = text.split("i live in")[-1].strip()
+
+    save_memory(memory)
+
+# ================== WEATHER ==================
 def get_weather(city="Lusaka"):
-    lat, lon = -15.3875, 28.3228
     url = "https://api.open-meteo.com/v1/forecast"
-    params = {"latitude": lat, "longitude": lon, "current_weather": True}
-    res = requests.get(url, params=params)
-    data = res.json()
-    weather = data["current_weather"]
-    return f"🌍 Weather in {city}\n\n🌡️ Temperature: {weather['temperature']}°C\n💨 Wind Speed: {weather['windspeed']} km/h\n🧭 Wind Direction: {weather['winddirection']}°"
 
-def get_news(topic="world"):
-    url = "https://newsapi.org/v2/everything"
-    params = {"q": topic, "sortBy": "publishedAt", "apiKey": "demo", "pageSize": 3}
-    res = requests.get(url, params=params)
-    data = res.json()
-    articles = data.get("articles", [])
-    news = "📰 Latest News:\n\n"
-    for article in articles[:3]:
-        news += f"• {article['title']}\n"
-    return news
+    params = {
+        "latitude": -15.3875,
+        "longitude": 28.3228,
+        "current_weather": True
+    }
 
-def get_crypto(symbol="bitcoin"):
-    url = f"https://api.coingecko.com/api/v3/simple/price?ids={symbol}&vs_currencies=usd"
-    res = requests.get(url)
-    data = res.json()
-    price = data.get(symbol, {}).get("usd", "N/A")
-    return f"💰 {symbol.upper()}: ${price}"
+    res = requests.get(url, params=params).json()
+    w = res["current_weather"]
 
-def get_quote():
-    url = "https://api.quotable.io/random"
-    res = requests.get(url)
-    data = res.json()
-    return f"💭 \"{data['content']}\"\n— {data['author']}"
+    return f"""🌤 Weather in {city}
 
-def get_definition(word):
-    url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
-    res = requests.get(url)
-    data = res.json()
-    if isinstance(data, list) and len(data) > 0:
-        definition = data[0]["meanings"][0]["definitions"][0]["definition"]
-        return f"📖 {word}: {definition}"
-    return "Word not found!"
+🌡 Temp: {w['temperature']}°C
+💨 Wind: {w['windspeed']} km/h
+🧭 Direction: {w['winddirection']}°
+"""
 
-def search_duckduckgo(query):
-    url = "https://api.duckduckgo.com/"
-    params = {"q": query, "format": "json"}
-    res = requests.get(url, params=params)
-    data = res.json()
-    results = data.get("Results", [])
-    if results:
-        return f"🔍 DuckDuckGo Results:\n\n" + "\n".join([f"• {r['Text']}" for r in results[:3]])
-    return "No results found"
+# ================== TAVILY SEARCH ==================
+def web_search(query):
+    url = "https://api.tavily.com/search"
 
-def get_location(place):
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {"q": place, "format": "json"}
-    res = requests.get(url, params=params)
-    headers = {"User-Agent": "Mozilla/5.0"}
-    res = requests.get(url, params=params, headers=headers)
-    data = res.json()
-    if data:
-        lat, lon = data[0]["lat"], data[0]["lon"]
-        return f"📍 {place}\nLat: {lat}, Lon: {lon}"
-    return "Location not found"
+    payload = {
+        "api_key": TAVILY_API_KEY,
+        "query": query,
+        "max_results": 3
+    }
 
+    data = requests.post(url, json=payload).json()
+    results = data.get("results", [])
+
+    if not results:
+        return "No results found 😔"
+
+    text = "🔍 Search Results:\n\n"
+
+    for r in results:
+        text += f"{r['title']}\n{r['url']}\n\n"
+
+    return text
+
+# ================== MUSIC (FREE DUCKDUCKGO) ==================
+def music_search(query):
+    url = "https://duckduckgo.com/"
+
+    params = {
+        "q": query + " music youtube"
+    }
+
+    # simple search link generator (no API key)
+    return f"""🎵 Music Search
+
+Search here:
+https://duckduckgo.com/?q={query.replace(' ', '+')}+music+youtube
+"""
+
+# ================== GROQ AI ==================
+def ask_ai(user_id, prompt):
+    user = get_user(user_id)
+
+    history = user["messages"][-5:]
+    facts = user.get("facts", {})
+
+    memory_text = f"User facts: {facts}\n\nChat history:\n"
+
+    for m in history:
+        memory_text += f"User: {m['user']}\nBot: {m['bot']}\n"
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "llama3-70b-8192",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a smart Telegram assistant. Use memory when available. Be short and helpful."
+            },
+            {
+                "role": "user",
+                "content": memory_text + f"\nUser: {prompt}"
+            }
+        ]
+    }
+
+    res = requests.post(url, headers=headers, json=data).json()
+
+    return res["choices"][0]["message"]["content"]
+
+# ================== START ==================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("/weather /news /crypto /quote /search query /define word /map place")
+    await update.message.reply_text(
+        "🔥 AI Bot Online\n\nTalk normally:\n- weather\n- search anything\n- music name\n- chat with AI"
+    )
 
-async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(get_weather())
-
-async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(get_news())
-
-async def crypto(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(get_crypto())
-
-async def quote(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(get_quote())
-
-async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = " ".join(context.args) if context.args else "zambia"
-    result = search_duckduckgo(query)
-    await update.message.reply_text(result)
-
-async def map_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    place = " ".join(context.args) if context.args else "Lusaka"
-    result = get_location(place)
-    await update.message.reply_text(result)
-
-async def define(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    word = " ".join(context.args) if context.args else "hello"
-    result = get_definition(word)
-    await update.message.reply_text(result)
-
-async def model_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"🤖 Currently using: {current_model}")
-
+# ================== CHAT ==================
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global current_model
-    user_id = update.message.chat_id
-    user_message = update.message.text or ""
-    
-    if user_id not in conversations:
-        conversations[user_id] = []
-    
-    conversations[user_id].append({"role": "user", "content": user_message})
-    
-    reply = None
-    for model in MODELS:
-        try:
-            response = client.chat.completions.create(model=model, messages=conversations[user_id], max_tokens=300)
-            reply = response.choices[0].message.content
-            current_model = model
-            break
-        except Exception:
-            continue
-    
-    if not reply:
-        reply = "I'm overloaded! 😔"
-    
-    conversations[user_id].append({"role": "assistant", "content": reply})
+    user_id = update.message.from_user.id
+    text = update.message.text
+
+    extract_facts(user_id, text)
+
+    t = text.lower()
+
+    if "weather" in t:
+        reply = get_weather()
+
+    elif t.startswith("search "):
+        reply = web_search(text[7:])
+
+    elif "music" in t:
+        song = text.replace("music", "").strip()
+        reply = music_search(song)
+
+    else:
+        reply = ask_ai(user_id, text)
+
+    update_memory(user_id, text, reply)
+
     await update.message.reply_text(reply)
 
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("weather", weather))
-app.add_handler(CommandHandler("news", news))
-app.add_handler(CommandHandler("crypto", crypto))
-app.add_handler(CommandHandler("quote", quote))
-app.add_handler(CommandHandler("search", search))
-app.add_handler(CommandHandler("map", map_search))
-app.add_handler(CommandHandler("define", define))
-app.add_handler(CommandHandler("model", model_info))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-app.run_polling()
+# ================== MAIN ==================
+def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+
+    print("🔥 Bot running...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
