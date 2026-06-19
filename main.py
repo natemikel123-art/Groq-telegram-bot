@@ -18,9 +18,8 @@ MODELS = [
 
 def web_search(query):
     # Make query more specific for current dataif any(word in query.lower() for word in ["kwacha", "zmw", "exchange rate"]):
-    if any(word in query.lower() for word in ["kwacha", "zmw", "exchange rate"]):
+    if any(word in query.lower() for word in ["exchange", "kwacha", "rate", "price", "stock", "forex", "zmw"]):
     query = "USD ZMW exchange rate today site:xe.com"
-        query = query + " 2026 current today xe.com"
     
     response = requests.post(
         "https://api.tavily.com/search",
