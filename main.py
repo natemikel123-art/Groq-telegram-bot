@@ -3,12 +3,12 @@ import json
 import os
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-
+import google.generativeai as genai
 # ================== KEYS ==================
 BOT_TOKEN = "8818776406:AAGcgdVE1aL6My5pLNfNFf7bQnjeg6WmdWg"
 TAVILY_API_KEY = "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"
-GROQ_API_KEY = "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"
-
+GEMINI_API_KEY = "AQ.Ab8RN6LeCc4n7QccemEM1pkVEf0EAkkYOxIlARViU7UmHaXm7Q"
+genai.configure(api_key=GEMINI_API_KEY)
 # ================== MEMORY ==================
 MEMORY_FILE = "memory.json"
 
