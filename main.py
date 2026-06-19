@@ -26,7 +26,7 @@ def needs_search(message):
     return any(word in message.lower() for word in keywords)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I'm ASTRO, developed by Nate 🤖")
+    await update.message.reply_text("Hello! I'm Astro BOT, developed by Nate 🤖")
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
