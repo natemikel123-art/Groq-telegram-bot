@@ -5,10 +5,11 @@ import requests
 
 BOT_TOKEN = "8818776406:AAGcgdVE1aL6My5pLNfNFf7bQnjeg6WmdWg"
 GROQ_API_KEY = "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"
-TAVILY_API_KEY = "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"
+TAVILY_API_KEY = "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
 
 client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
+MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b"]
 
 def web_search(query):
     response = requests.post(
@@ -40,17 +41,26 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conversations[user_id].append({"role": "user", "content": content})
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=conversations[user_id],
-        max_tokens=500
-    )
+    reply = None
+    for model in MODELS:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=conversations[user_id],
+                max_tokens=500
+            )
+            reply = response.choices[0].message.content
+            break
+        except Exception:
+            continue
 
-    reply = response.choices[0].message.content
+    if not reply:
+        reply = "I'm overloaded! 😔"
+
     conversations[user_id].append({"role": "assistant", "content": reply})
     await update.message.reply_text(reply)
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-app.run_polling() 
+app.run_polling()
