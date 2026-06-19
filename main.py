@@ -3,41 +3,28 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from groq import Groq
 import requests
 import base64
-BOT_TOKEN = "8818776406:AAGcgdVE1aL6My5pLNfNFf7bQnjeg6WmdWg"
-GROQ_API_KEY = "gsk_uSSmWG6yv1TFGZ9VYZj3WGdyb3FYm"
-TAVILY_API_KEY = "tvly-dev-4SIR0i-IaBXsDLdSeAtpB7"
+
+BOT_TOKEN = "8818776406:AAFPC8Hxc6DlzSq7gcd9s3eAzUcqU8w7184"
+GROQ_API_KEY = "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"
+TAVILY_API_KEY = "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"
 
 client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
 current_model = "llama-3.3-70b-versatile"
 
-MODELS = [
-    "llama-3.3-70b-versatile",
-    "gemma2-9b-it",
-    "llama-3.1-8b-instant"
-]
+MODELS = ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"]
 
 def web_search(query):
-    if any(word in query.lower() for word in ["exchange", "kwacha", "rate", "price", "stock", "forex", "zmw"]):
+    if any(word in query.lower() for word in ["exchange", "kwacha", "rate"]):
         query = "USD ZMW exchange rate today site:xe.com"
     else:
         query = query + " 2026 current today"
-    
-    response = requests.post(
-        "https://api.tavily.com/search",
-        json={
-            "api_key": TAVILY_API_KEY,
-            "query": query,
-            "max_results": 3,
-            "search_depth": "advanced",
-            "topic": "news"
-        }
-    )
+    response = requests.post("https://api.tavily.com/search", json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 3, "search_depth": "advanced", "topic": "news"})
     results = response.json().get("results", [])
     return "\n".join([r["content"][:300] for r in results])
 
 def needs_search(message):
-    keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather", "exchange", "kwacha", "rate", "price", "zmw", "forex", "dollar"]
+    keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather", "exchange", "kwacha", "rate"]
     return any(word in message.lower() for word in keywords)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -50,68 +37,31 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global current_model
     user_id = update.message.chat_id
     user_message = update.message.text or ""
-
+    
     if user_id not in conversations:
         conversations[user_id] = []
-
-    # Handle image if attached
-    if update.message.photo:
-        photo = update.message.photo[-1]
-        file = await context.bot.get_file(photo.file_id)
-        image_data = await file.download_as_bytearray(
-        image_base64 = base64.b64encode(image_data).decode()
-        
-        content = f"{user_message}\n\n[Image attached]"
-        conversations[user_id].append({"role": "user", "content": content})
-        
-        reply = None
-        for model in MODELS:
-            try:
-                response = client.chat.completions.create(
-                    model="llava-1.5-7b-hf",
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": user_message or "What's in this image?"},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
-                        ]
-                    }],
-                    max_tokens=500
-                )
-                reply = response.choices[0].message.content
-                current_model = "llava-1.5-7b-hf"
-                break
-            except Exception:
-                continue
+    
+    if needs_search(user_message):
+        search_results = web_search(user_message)
+        content = f"{user_message}\n\nWeb results:\n{search_results}"
     else:
-        # Text only
-        if needs_search(user_message):
-            search_results = web_search(user_message)
-            content = f"{user_message}\n\nWeb results:\n{search_results}"
-        else:
-            content = user_message
-
-        conversations[user_id].append({"role": "user", "content": content})
-
-        reply = None
-        used_model = None
-        for model in MODELS:
-            try:
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=conversations[user_id],
-                    max_tokens=300
-                )
-                reply = response.choices[0].message.content
-                used_model = model
-                current_model = used_model
-                break
-            except Exception:
-                continue
-
+        content = user_message
+    
+    conversations[user_id].append({"role": "user", "content": content})
+    
+    reply = None
+    for model in MODELS:
+        try:
+            response = client.chat.completions.create(model=model, messages=conversations[user_id], max_tokens=300)
+            reply = response.choices[0].message.content
+            current_model = model
+            break
+        except Exception:
+            continue
+    
     if not reply:
-        reply = "I'm currently overloaded, please try again in a few minutes! 😔"
-
+        reply = "I'm overloaded, try again later! 😔"
+    
     conversations[user_id].append({"role": "assistant", "content": reply})
     await update.message.reply_text(reply)
 
