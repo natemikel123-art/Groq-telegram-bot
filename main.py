@@ -122,14 +122,6 @@ def ask_ai(user_id, prompt):
     try:
         user = get_user(user_id)
 
-        history = user["messages"][-5:]
-        facts = user.get("facts", {})
-
-        memory_text = f"User facts: {facts}\n\nChat history:\n"
-
-        for m in history:
-            memory_text += f"User: {m['user']}\nBot: {m['bot']}\n"
-
         url = "https://api.groq.com/openai/v1/chat/completions"
 
         headers = {
@@ -141,18 +133,26 @@ def ask_ai(user_id, prompt):
             "model": "llama3-70b-8192",
             "messages": [
                 {"role": "system", "content": "You are a helpful Telegram assistant."},
-                {"role": "user", "content": memory_text + prompt}
+                {"role": "user", "content": prompt}
             ]
         }
 
-        res = requests.post(url, headers=headers, json=data).json()
+        res = requests.post(url, headers=headers, json=data)
 
-        return res["choices"][0]["message"]["content"]
+        print("GROQ STATUS:", res.status_code)
+        print("GROQ RESPONSE:", res.text)
+
+        data = res.json()
+
+        # 🔥 SAFE CHECK (IMPORTANT)
+        if "choices" not in data:
+            return f"Groq error: {data}"
+
+        return data["choices"][0]["message"]["content"]
 
     except Exception as e:
-        print("GROQ ERROR:", e)
-        return "AI error 😔 check API key or internet"
-
+        print("GROQ EXCEPTION:", e)
+        return "AI error 😔 check logs"
 # ================== START ==================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
