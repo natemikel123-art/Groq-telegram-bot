@@ -132,7 +132,7 @@ def ask_ai(user_id, prompt):
         }
 
         data = {
-            "model": "llama3-70b-8192",
+            "model": "openai/gpt-oss-120b",
             "messages": [
                 {"role": "system", "content": "You are a helpful Telegram assistant."},
                 {"role": "user", "content": prompt}
