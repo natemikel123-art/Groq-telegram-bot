@@ -57,6 +57,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversations[user_id].append({"role": "user", "content": content})
 
     reply = None
+    used_model = None
     for model in MODELS:
         try:
             response = client.chat.completions.create(
@@ -65,13 +66,15 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 max_tokens=500
             )
             reply = response.choices[0].message.content
+            used_model = model
             break
         except Exception:
             continue
 
     if not reply:
         reply = "I'm currently overloaded, please try again in a few minutes! 😔"
-
+    elif used_model != MODELS[0]:
+        reply = f"⚠️ Switched to {used_model}\n\n" + reply
     conversations[user_id].append({"role": "assistant", "content": reply})
     await update.message.reply_text(reply)
 
