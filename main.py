@@ -17,14 +17,18 @@ MODELS = [
 ]
 
 def web_search(query):
+    # Make query more specific for current data
+    if any(word in query.lower() for word in ["exchange", "kwacha", "rate", "price", "stock"]):
+        query = query + " 2026 current today"
+    
     response = requests.post(
         "https://api.tavily.com/search",
         json={
-    "api_key": TAVILY_API_KEY, 
-    "query": query, 
-    "max_results": 3,
-    "search_depth": "advanced",
-    "topic": "news"
+            "api_key": TAVILY_API_KEY,
+            "query": query,
+            "max_results": 3,
+            "search_depth": "advanced",
+            "topic": "news"
         }
     )
     results = response.json().get("results", [])
