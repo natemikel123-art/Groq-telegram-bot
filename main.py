@@ -44,7 +44,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversations[user_id].append({"role": "user", "content": content})
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
             {"role": "system", "content": "You are ASTRO, a helpful AI assistant from Zambia. You're friendly, use emojis, and respond in a casual way. You love talking about Zambia, tech, and gaming."},
             *conversations[user_id]
