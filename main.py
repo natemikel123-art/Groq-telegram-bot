@@ -119,40 +119,39 @@ https://duckduckgo.com/?q={query.replace(' ', '+')}+music+youtube
 
 # ================== GROQ AI ==================
 def ask_ai(user_id, prompt):
-    user = get_user(user_id)
+    try:
+        user = get_user(user_id)
 
-    history = user["messages"][-5:]
-    facts = user.get("facts", {})
+        history = user["messages"][-5:]
+        facts = user.get("facts", {})
 
-    memory_text = f"User facts: {facts}\n\nChat history:\n"
+        memory_text = f"User facts: {facts}\n\nChat history:\n"
 
-    for m in history:
-        memory_text += f"User: {m['user']}\nBot: {m['bot']}\n"
+        for m in history:
+            memory_text += f"User: {m['user']}\nBot: {m['bot']}\n"
 
-    url = "https://api.groq.com/openai/v1/chat/completions"
+        url = "https://api.groq.com/openai/v1/chat/completions"
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-    data = {
-        "model": "llama3-70b-8192",
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a smart Telegram assistant. Use memory when available. Be short and helpful."
-            },
-            {
-                "role": "user",
-                "content": memory_text + f"\nUser: {prompt}"
-            }
-        ]
-    }
+        data = {
+            "model": "llama3-70b-8192",
+            "messages": [
+                {"role": "system", "content": "You are a helpful Telegram assistant."},
+                {"role": "user", "content": memory_text + prompt}
+            ]
+        }
 
-    res = requests.post(url, headers=headers, json=data).json()
+        res = requests.post(url, headers=headers, json=data).json()
 
-    return res["choices"][0]["message"]["content"]
+        return res["choices"][0]["message"]["content"]
+
+    except Exception as e:
+        print("GROQ ERROR:", e)
+        return "AI error 😔 check API key or internet"
 
 # ================== START ==================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -162,30 +161,34 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ================== CHAT ==================
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = update.message.text
+    try:
+        user_id = update.message.from_user.id
+        text = update.message.text
 
-    extract_facts(user_id, text)
+        extract_facts(user_id, text)
 
-    t = text.lower()
+        t = text.lower()
 
-    if "weather" in t:
-        reply = get_weather()
+        if "weather" in t:
+            reply = get_weather()
 
-    elif t.startswith("search "):
-        reply = web_search(text[7:])
+        elif t.startswith("search "):
+            reply = web_search(text[7:])
 
-    elif "music" in t:
-        song = text.replace("music", "").strip()
-        reply = music_search(song)
+        elif "music" in t:
+            song = text.replace("music", "").strip()
+            reply = music_search(song)
 
-    else:
-        reply = ask_ai(user_id, text)
+        else:
+            reply = ask_ai(user_id, text)
 
-    update_memory(user_id, text, reply)
+        update_memory(user_id, text, reply)
 
-    await update.message.reply_text(reply)
+        await update.message.reply_text(reply)
 
+    except Exception as e:
+        print("ERROR:", e)
+        await update.message.reply_text("Bot error happened 😔 check logs")
 # ================== MAIN ==================
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
