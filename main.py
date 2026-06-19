@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from groq import Groq
 import requests
-
+import base64
 BOT_TOKEN = "8818776406:AAGcgdVE1aL6My5pLNfNFf7bQnjeg6WmdWg"
 GROQ_API_KEY = "gsk_uSSmWG6yv1TFGZ9VYZj3WGdyb3FYm"
 TAVILY_API_KEY = "tvly-dev-4SIR0i-IaBXsDLdSeAtpB7"
@@ -49,39 +49,68 @@ async def model_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global current_model
     user_id = update.message.chat_id
-    user_message = update.message.text
+    user_message = update.message.text or ""
 
     if user_id not in conversations:
         conversations[user_id] = []
 
-    if needs_search(user_message):
-        search_results = web_search(user_message)
-        content = f"{user_message}\n\nWeb results:\n{search_results}"
+    # Handle image if attached
+    if update.message.photo:
+        photo = update.message.photo[-1]
+        file = await context.bot.get_file(photo.file_id)
+        image_data = await file.download_as_bytearray(
+        image_base64 = base64.b64encode(image_data).decode()
+        
+        content = f"{user_message}\n\n[Image attached]"
+        conversations[user_id].append({"role": "user", "content": content})
+        
+        reply = None
+        for model in MODELS:
+            try:
+                response = client.chat.completions.create(
+                    model="llava-1.5-7b-hf",
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_message or "What's in this image?"},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                        ]
+                    }],
+                    max_tokens=500
+                )
+                reply = response.choices[0].message.content
+                current_model = "llava-1.5-7b-hf"
+                break
+            except Exception:
+                continue
     else:
-        content = user_message
+        # Text only
+        if needs_search(user_message):
+            search_results = web_search(user_message)
+            content = f"{user_message}\n\nWeb results:\n{search_results}"
+        else:
+            content = user_message
 
-    conversations[user_id].append({"role": "user", "content": content})
+        conversations[user_id].append({"role": "user", "content": content})
 
-    reply = None
-    used_model = None
-    for model in MODELS:
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=conversations[user_id],
-                max_tokens=500
-            )
-            reply = response.choices[0].message.content
-            used_model = model
-            current_model = used_model
-            break
-        except Exception:
-            continue
+        reply = None
+        used_model = None
+        for model in MODELS:
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=conversations[user_id],
+                    max_tokens=300
+                )
+                reply = response.choices[0].message.content
+                used_model = model
+                current_model = used_model
+                break
+            except Exception:
+                continue
 
     if not reply:
         reply = "I'm currently overloaded, please try again in a few minutes! 😔"
-    elif used_model != MODELS[0]:
-        reply = f"⚠️ Switched to {used_model}\n\n" + reply
 
     conversations[user_id].append({"role": "assistant", "content": reply})
     await update.message.reply_text(reply)
