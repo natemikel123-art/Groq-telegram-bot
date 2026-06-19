@@ -11,9 +11,10 @@ client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
 
 def web_search(query):
+    query = query + " today 2026-06-19"
     response = requests.post(
         "https://api.tavily.com/search",
-        json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 2}
+        json={"api_key": TAVILY_API_KEY, "query": query}
     )
     results = response.json().get("results", [])
     return "\n".join([r["content"][:300] for r in results])
@@ -23,7 +24,7 @@ def needs_search(message):
     return any(word in message.lower() for word in keywords)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! How can I help you?")
+    await update.message.reply_text("Hello! I'm ASTRO, developed by Nate 🤖")
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
