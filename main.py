@@ -9,7 +9,7 @@ TAVILY_API_KEY = "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"
 
 client = Groq(api_key=GROQ_API_KEY)
 conversations = {}
-
+current_model = "llama-3.3-70b-versatile"
 MODELS = [
     "llama-3.3-70b-versatile",
     "gemma2-9b-it",
@@ -41,7 +41,7 @@ def needs_search(message):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hello! How can I help you?")
 async def model_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🤖 Models: llama-3.3-70b-versatile → gemma2-9b-it → llama-3.1-8b-instant")
+    await update.message.reply_text(f"🤖 Currently using: {current_model}")
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
     user_message = update.message.text
@@ -68,6 +68,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             reply = response.choices[0].message.content
             used_model = model
+            global current_model
+            current_model = used_model
             break
         except Exception:
             continue
