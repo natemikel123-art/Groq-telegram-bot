@@ -19,7 +19,7 @@ MODELS = [
 def web_search(query):
     # Make query more specific for current data
     if any(word in query.lower() for word in ["exchange", "kwacha", "rate", "price", "stock"]):
-        query = query + " 2026 current today"
+        query = query + " 2026 current today xe.com"
     
     response = requests.post(
         "https://api.tavily.com/search",
@@ -35,9 +35,8 @@ def web_search(query):
     return "\n".join([r["content"][:300] for r in results])
 
 def needs_search(message):
-    keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather"]
+    keywords = ["today", "current", "latest", "news", "2024", "2025", "2026", "who won", "what happened", "price of", "weather", "exchange", "kwacha", "rate", "price", "zmw", "forex", "dollar"]
     return any(word in message.lower() for word in keywords)
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hello! How can I help you?")
 async def model_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
