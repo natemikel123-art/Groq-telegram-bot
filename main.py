@@ -3,7 +3,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from groq import Groq
 import requests
 
-BOT_TOKEN = "8818776406:AAGcgdVE1aL6My5pLNfNFf7bQnjeg6WmdWg"
+BOT_TOKEN = "8950286912:AAEkfaL6Pa3C0xmeAQiGHFE-8YBm1FliObA"
 GROQ_API_KEY = "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"
 SERPAPI_KEY = "1016ce29db72568f1e28438ec78486dee178eb6b80cc56ac9cd16e1d51fd6b25"
 
